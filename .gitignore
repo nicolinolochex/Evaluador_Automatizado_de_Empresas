@@ -1,0 +1,13 @@
+# Ignorar archivo de la API key
+.env
+
+
+# Ignorar archivos de log
+*.log
+
+# Ignorar directorios de dependencias (si usas Node.js, por ejemplo)
+node_modules/
+
+# Ignorar archivos de compilación
+/dist
+/build

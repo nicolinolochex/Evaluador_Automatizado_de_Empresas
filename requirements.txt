@@ -1,0 +1,10 @@
+streamlit>=1.25.0
+openai==0.28.0
+requests>=2.32.3
+beautifulsoup4>=4.13.3
+pandas>=1.5.3
+python-dotenv>=0.21.0
+yfinance
+tldextract==3.4.0
+matplotlib
+requests
