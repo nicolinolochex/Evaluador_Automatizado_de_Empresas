@@ -196,7 +196,7 @@ Content:
 
     # Preparar payload para la API de Gemini
     payload = {
-        "model": "gemini-model-id",  # <-- Cambiar por el modelo correcto de Gemini
+        "model": "your-correct-gemini-model-id",  # <-- Cambiar por el identificador correcto para Gemini
         "messages": [
             {"role": "system", "content": system_msg},
             {"role": "user", "content": prompt}
@@ -211,18 +211,16 @@ Content:
     }
     
     try:
-        # Cambiar el endpoint por el correcto según la documentación de Gemini
-        response = requests.post("https://aistudio.google.com/api/v1/chat", headers=req_headers, json=payload)
-        response.raise_for_status()  # Lanza error si no es 200 OK
-        
-        # Línea de depuración para ver la respuesta cruda
-        st.write("Raw Gemini response:", response.text)
-        
-        # Verificar que el tipo de contenido sea JSON
+        # Cambiar el endpoint por el oficial de Gemini según la documentación
+        response = requests.post("https://gemini.googleapis.com/v1/chat/completions", headers=req_headers, json=payload)
+        response.raise_for_status()  # Lanza error si la respuesta no es 200 OK
+        st.write("Raw Gemini response:", response.text)  # Depuración
+
+        # Verificar que el Content-Type sea JSON
         if "application/json" not in response.headers.get("Content-Type", ""):
-            st.error("Response content type is not JSON.")
+            st.error("Response content type is not JSON. Check your endpoint and payload.")
             return None
-        
+
         if not response.text.strip():
             st.error("Gemini response is empty.")
             return None
@@ -233,7 +231,6 @@ Content:
             st.error("Failed to decode Gemini response as JSON.")
             return None
 
-        # Adaptar según la estructura real de la respuesta de Gemini:
         if "choices" in response_json and len(response_json["choices"]) > 0:
             return response_json["choices"][0]["message"]["content"].strip()
         else:
@@ -242,6 +239,7 @@ Content:
     except Exception as e:
         st.error(f"Error during Gemini extraction: {e}")
         return None
+
 
 
 def safe_parse(raw):
