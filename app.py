@@ -257,7 +257,7 @@ def process_company(company_url):
 
     # Extraer info usando Gemini
     website_raw = extract_company_info(website_text, company_url, source="website")
-    website_info = safe_parse(website_raw)
+    website_info = {"brief_description": website_raw} if website_raw else {}
 
     # Extraer información desde LinkedIn si se encuentra
     linkedin_url = find_linkedin_url(website_soup)
@@ -266,7 +266,7 @@ def process_company(company_url):
         linkedin_text, _ = scrape_web_content(linkedin_url)
         if linkedin_text:
             linkedin_raw = extract_company_info(linkedin_text, company_url, source="LinkedIn")
-            linkedin_info = safe_parse(linkedin_raw)
+            linkedin_info = {"brief_description": linkedin_raw} if linkedin_raw else {}
 
     final_info = {**website_info, **linkedin_info, "linkedin_url": linkedin_url}
 
