@@ -30,7 +30,6 @@ response = client.chat.completions.create(
     max_tokens=600
 )
 
-return response.completions[0].data.text.strip()
 
 # Estimated token cost for GPT-4 (puedes ajustarlo si es necesario)
 COST_PER_1K_TOKENS = 0.03
