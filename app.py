@@ -218,19 +218,9 @@ def extract_company_info(content, website_url, source="website"):
     try:
         # Llamada al endpoint de Gemini (ajusta la URL según la documentación oficial)
         response = requests.post("https://aistudio.google.com/api/v1/chat", headers=headers, json=payload)
-        response.raise_for_status() 
-           try:
-        response = requests.post("https://aistudio.google.com/api/v1/chat", headers=headers, json=payload)
         response.raise_for_status()  # Lanza error si la respuesta no es 200 OK
-        st.write("Raw Gemini response:", response.text)  # <-- Agregá esta línea para depurar
+        st.write("Raw Gemini response:", response.text)  # Línea de depuración
         response_json = response.json()
-        return response_json["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        st.error(f"Error during Gemini extraction: {e}")
-        return None
-         # Lanza error si la respuesta no es 200 OK
-        response_json = response.json()
-        # Se asume una estructura de respuesta similar a la de OpenAI, ajusta según sea necesario.
         return response_json["choices"][0]["message"]["content"].strip()
     except Exception as e:
         st.error(f"Error during Gemini extraction: {e}")
