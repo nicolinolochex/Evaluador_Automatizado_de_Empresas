@@ -398,6 +398,8 @@ if page == "Company Search":
 
     if "df" in st.session_state:
         df = st.session_state.df
+        st.subheader("Company Search Summary")
+        st.dataframe(pd.DataFrame([{"Company Summary": df.iloc[0].get("brief_description", "")}]))
         for col in df.columns:
             df[col] = df[col].apply(lambda v: json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else v)
         st.dataframe(df)
