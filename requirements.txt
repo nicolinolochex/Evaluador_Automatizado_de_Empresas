@@ -8,3 +8,5 @@ yfinance
 tldextract==3.4.0
 matplotlib
 requests
+ai21
+
