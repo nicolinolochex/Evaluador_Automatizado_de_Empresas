@@ -176,69 +176,62 @@ def extract_company_info(content, website_url, source="website"):
         st.warning("Insufficient content extracted for analysis.")
         return None
 
-    # Construir prompt según idioma
+    # Construir prompt basado en el idioma
     if lang == "Español":
         system_msg = "Eres un asistente experto en valoración y adquisición de empresas. Genera resultados en Español."
-        prompt = f"""
-Extrae y resume la siguiente información de la empresa del contenido proporcionado ({source}).
-Devuelve SOLO un JSON válido con las claves: name, website, ownership, country, brief_description, services, headcount, revenue, ticker.
-Contenido:
-{content[:4000]}
-"""
+        user_prompt = f"Extrae y resume la siguiente información de la empresa: {content[:4000]}"
     else:
         system_msg = "You are an expert in company valuation and acquisitions. Return output in English."
-        prompt = f"""
-Extract and summarize the following company information from the provided {source} content.
-Return ONLY a valid JSON with keys: name, website, ownership, country, brief_description, services, headcount, revenue, ticker.
-Content:
-{content[:4000]}
-"""
+        user_prompt = f"Extract and summarize the following company information: {content[:4000]}"
 
-    # Preparar payload para la API de Gemini
+    # Combinar los mensajes en un solo prompt
+    full_prompt = f"{system_msg}\n\n{user_prompt}"
+
+    # Preparar payload para la API de AI21 Studio
     payload = {
-        "model": "your-correct-gemini-model-id",  # <-- Cambiar por el identificador correcto para Gemini
-        "messages": [
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 600
+        "prompt": full_prompt,
+        "numResults": 1,          # Número de resultados deseados
+        "maxTokens": 600,         # Máximo de tokens en la respuesta
+        "stopSequences": ["\n"],  # Secuencia de parada (opcional)
+        "topKReturn": 0,
+        "temperature": 0.7
     }
+
+    # Cargar la API key de AI21 Studio (definida en tus secrets o .env como AI21_API_KEY)
+    AI21_API_KEY = st.secrets.get("AI21_API_KEY") or os.getenv("AI21_API_KEY")
     
     req_headers = {
-        "Authorization": f"Bearer {GEMINI_API_KEY}",
+        "Authorization": f"Bearer {AI21_API_KEY}",
         "Content-Type": "application/json"
     }
     
     try:
-        # Cambiar el endpoint por el oficial de Gemini según la documentación
-        response = requests.post("https://gemini.googleapis.com/v1/chat/completions", headers=req_headers, json=payload)
+        # Endpoint oficial para el modelo j1-large de AI21 Studio
+        response = requests.post("https://api.ai21.com/studio/v1/j1-large/complete", headers=req_headers, json=payload)
         response.raise_for_status()  # Lanza error si la respuesta no es 200 OK
-        st.write("Raw Gemini response:", response.text)  # Depuración
-
-        # Verificar que el Content-Type sea JSON
-        if "application/json" not in response.headers.get("Content-Type", ""):
-            st.error("Response content type is not JSON. Check your endpoint and payload.")
-            return None
+        st.write("Raw AI21 response:", response.text)  # Línea de depuración
 
         if not response.text.strip():
-            st.error("Gemini response is empty.")
+            st.error("AI21 response is empty.")
             return None
 
         try:
             response_json = response.json()
         except json.JSONDecodeError:
-            st.error("Failed to decode Gemini response as JSON.")
+            st.error("Failed to decode AI21 response as JSON.")
             return None
 
-        if "choices" in response_json and len(response_json["choices"]) > 0:
-            return response_json["choices"][0]["message"]["content"].strip()
+        # La estructura de la respuesta de AI21 suele ser:
+        # {"completions": [{"data": {"text": "texto generado"}}, ...], ...}
+        if "completions" in response_json and len(response_json["completions"]) > 0:
+            return response_json["completions"][0]["data"]["text"].strip()
         else:
-            st.error("Unexpected Gemini response structure.")
+            st.error("Unexpected AI21 response structure.")
             return None
     except Exception as e:
-        st.error(f"Error during Gemini extraction: {e}")
+        st.error(f"Error during AI21 extraction: {e}")
         return None
+
 
 
 
