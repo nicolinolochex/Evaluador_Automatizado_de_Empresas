@@ -193,37 +193,33 @@ def extract_company_info(content, website_url, source="website"):
         st.warning("Insufficient content extracted for analysis.")
         return None
 
-    # Construir prompt basado en el idioma
     if lang == "Español":
         system_msg = "Eres un asistente experto en valoración y adquisición de empresas. Genera resultados en Español."
-        prompt = f"Extrae y resume la siguiente información de la empresa: {content[:4000]}"
+        user_prompt = f"Extrae y resume esta información de la empresa: {content[:4000]}"
     else:
         system_msg = "You are an expert in company valuation and acquisitions. Return output in English."
-        prompt = f"Extract and summarize the following company information: {content[:4000]}"
+        user_prompt = f"Extract and summarize the following company information: {content[:4000]}"
 
-    # Combinar el mensaje del sistema y del usuario en un único prompt
-    full_prompt = f"{system_msg}\n\n{prompt}"
+    full_prompt = f"{system_msg}\n\n{user_prompt}"
 
     try:
-        # Llamada a la API usando el SDK
-        response = ai21.Completion.create(
-            model="j1-large",         # Podés cambiarlo a "j1-jumbo" si lo tenés habilitado
-            prompt=full_prompt,
-            numResults=1,
-            maxTokens=600,
-            topKReturn=0,
+        response = client.chat.completions.create(
+            model="j1-large", 
+            messages=[
+                ChatMessage(role="system", content=system_msg),
+                ChatMessage(role="user", content=user_prompt)
+            ],
             temperature=0.7,
-            stopSequences=["\n"]
+            max_tokens=600,
+            stop_sequences=["\n"]
         )
-        st.write("Raw AI21 SDK response:", response)  # Depuración
+        st.write("Raw AI21 SDK response:", response)
+        comps = response.completions
+        if comps and comps[0].data.text:
+            return comps[0].data.text.strip()
+        st.error("Unexpected AI21 response structure.")
+        return None
 
-        # La respuesta suele tener la estructura: 
-        # {"completions": [{"data": {"text": "texto generado"}}, ...], ...}
-        if "completions" in response and len(response["completions"]) > 0:
-            return response["completions"][0]["data"]["text"].strip()
-        else:
-            st.error("Unexpected response structure from AI21 Studio.")
-            return None
     except Exception as e:
         st.error(f"Error during AI21 extraction: {e}")
         return None
