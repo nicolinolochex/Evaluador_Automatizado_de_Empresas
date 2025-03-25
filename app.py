@@ -10,13 +10,27 @@ from dotenv import load_dotenv
 import yfinance as yf
 import urllib.parse
 import tldextract
-import ai21
+from ai21 import AI21Client
+from ai21.models.chat import ChatMessage
 
 st.write("Attributes of ai21:", dir(ai21))
 
 # Load environment variables
 load_dotenv()
-ai21.api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+client = AI21Client(api_key=st.secrets.get("AI21_API_KEY") or os.getenv("AI21_API_KEY"))
+
+response = client.chat.completions.create(
+    model="j1-large",                              # o "j1-jumbo" si lo tenés habilitado
+    messages=[
+        ChatMessage(role="system", content=system_msg),
+        ChatMessage(role="user", content=prompt)
+    ],
+    temperature=0.7,
+    max_tokens=600
+)
+
+return response.completions[0].data.text.strip()
 
 # Estimated token cost for GPT-4 (puedes ajustarlo si es necesario)
 COST_PER_1K_TOKENS = 0.03
