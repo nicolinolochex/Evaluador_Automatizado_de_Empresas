@@ -10,10 +10,10 @@ from dotenv import load_dotenv
 import yfinance as yf
 import urllib.parse
 import tldextract
-
+import ai21
 # Load environment variables
 load_dotenv()
-GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+ai21.api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
 
 # Estimated token cost for GPT-4 (puedes ajustarlo si es necesario)
 COST_PER_1K_TOKENS = 0.03
@@ -179,59 +179,37 @@ def extract_company_info(content, website_url, source="website"):
     # Construir prompt basado en el idioma
     if lang == "Español":
         system_msg = "Eres un asistente experto en valoración y adquisición de empresas. Genera resultados en Español."
-        user_prompt = f"Extrae y resume la siguiente información de la empresa: {content[:4000]}"
+        prompt = f"Extrae y resume la siguiente información de la empresa: {content[:4000]}"
     else:
         system_msg = "You are an expert in company valuation and acquisitions. Return output in English."
-        user_prompt = f"Extract and summarize the following company information: {content[:4000]}"
+        prompt = f"Extract and summarize the following company information: {content[:4000]}"
 
-    # Combinar los mensajes en un solo prompt
-    full_prompt = f"{system_msg}\n\n{user_prompt}"
+    # Combinar el mensaje del sistema y del usuario en un único prompt
+    full_prompt = f"{system_msg}\n\n{prompt}"
 
-    # Preparar payload para AI21 Studio
-    payload = {
-        "prompt": full_prompt,
-        "numResults": 1,          # Número de resultados deseados
-        "maxTokens": 600,         # Máximo de tokens en la respuesta
-        "stopSequences": ["\n"],  # Secuencia de parada (opcional)
-        "topKReturn": 0,
-        "temperature": 0.7
-    }
-
-    # Cargar la API key de AI21 Studio (definida en tus secrets o .env como AI21_API_KEY)
-    AI21_API_KEY = st.secrets.get("AI21_API_KEY") or os.getenv("AI21_API_KEY")
-    
-    req_headers = {
-        "Authorization": f"Bearer {AI21_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
     try:
-        # Llamada al endpoint de completions para el modelo j1-large
-        response = requests.post("https://api.ai21.com/studio/v1/j1-large/complete", headers=req_headers, json=payload)
-        response.raise_for_status()  # Error si la respuesta no es 200 OK
-        st.write("Raw AI21 response:", response.text)  # Depuración: ver respuesta cruda
+        # Llamada a la API usando el SDK
+        response = ai21.Completion.create(
+            model="j1-large",         # Podés cambiarlo a "j1-jumbo" si lo tenés habilitado
+            prompt=full_prompt,
+            numResults=1,
+            maxTokens=600,
+            topKReturn=0,
+            temperature=0.7,
+            stopSequences=["\n"]
+        )
+        st.write("Raw AI21 SDK response:", response)  # Depuración
 
-        if not response.text.strip():
-            st.error("AI21 response is empty.")
-            return None
-
-        try:
-            response_json = response.json()
-        except json.JSONDecodeError:
-            st.error("Failed to decode AI21 response as JSON.")
-            return None
-
-        # Se espera que la respuesta tenga esta estructura:
+        # La respuesta suele tener la estructura: 
         # {"completions": [{"data": {"text": "texto generado"}}, ...], ...}
-        if "completions" in response_json and len(response_json["completions"]) > 0:
-            return response_json["completions"][0]["data"]["text"].strip()
+        if "completions" in response and len(response["completions"]) > 0:
+            return response["completions"][0]["data"]["text"].strip()
         else:
-            st.error("Unexpected AI21 response structure.")
+            st.error("Unexpected response structure from AI21 Studio.")
             return None
     except Exception as e:
         st.error(f"Error during AI21 extraction: {e}")
         return None
-
 
 
 
