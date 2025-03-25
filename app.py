@@ -1,7 +1,6 @@
 import subprocess
 import sqlite3
 import streamlit as st
-import openai
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -12,30 +11,23 @@ import yfinance as yf
 import urllib.parse
 import tldextract
 
-
-
-
-
 # Load environment variables
 load_dotenv()
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
 
-# Estimated token cost for GPT-4
+# Estimated token cost for GPT-4 (puedes ajustarlo si es necesario)
 COST_PER_1K_TOKENS = 0.03
 
 FALLBACK_TICKERS = {
     # Formato:
     # "dominio_principal_de_la_empresa": "TICKER_BURSÁTIL"
-
     # -----------------------------------------------------
-    # ------------------- Ejemplos de Empresas ------------
+    # ------------------- Ejemplos de Empresas ------------ 
     # -----------------------------------------------------
-
-    # Tecnología
     "apple.com": "AAPL",
     "microsoft.com": "MSFT",
-    "google.com": "GOOGL",   # google.com => GOOGL
-    "alphabet.com": "GOOG",  # a veces la web es alphabet.com
+    "google.com": "GOOGL",
+    "alphabet.com": "GOOG",
     "amazon.com": "AMZN",
     "tesla.com": "TSLA",
     "meta.com": "META",
@@ -51,8 +43,6 @@ FALLBACK_TICKERS = {
     "netflix.com": "NFLX",
     "hp.com": "HPQ",
     "cisco.com": "CSCO",
-
-    # Finanzas/Bancos
     "jpmorganchase.com": "JPM",
     "chase.com": "JPM",
     "goldmansachs.com": "GS",
@@ -62,34 +52,26 @@ FALLBACK_TICKERS = {
     "wellsfargo.com": "WFC",
     "hsbc.com": "HSBC",
     "barclays.co.uk": "BCS",
-
-    # Consumo/Alimentación
     "coca-colacompany.com": "KO",
     "pepsico.com": "PEP",
-    "nestle.com": "NSRGY",  # ADR
+    "nestle.com": "NSRGY",
     "unilever.com": "UL",
     "kraftheinzcompany.com": "KHC",
     "mondelezinternational.com": "MDLZ",
-    "danone.com": "DANOY",   # ADR
+    "danone.com": "DANOY",
     "tyson.com": "TSN",
-
-    # Automotriz
     "toyota.com": "TM",
     "ford.com": "F",
     "gm.com": "GM",
-    "volkswagen.com": "VWAGY", # ADR
+    "volkswagen.com": "VWAGY",
     "honda.com": "HMC",
     "bmw.com": "BMWYY",
     "mercedes-benz.com": "MBGYY",
-
-    # Energía/Petróleo
     "exxonmobil.com": "XOM",
     "chevron.com": "CVX",
     "shell.com": "SHEL",
     "bp.com": "BP",
     "totalenergies.com": "TTE",
-
-    # Retail
     "walmart.com": "WMT",
     "costco.com": "COST",
     "homedepot.com": "HD",
@@ -97,10 +79,8 @@ FALLBACK_TICKERS = {
     "target.com": "TGT",
     "bestbuy.com": "BBY",
     "nike.com": "NKE",
-    "adidas.com": "ADDYY",  # ADR
-    "zalando.com": "ZLNDY", # ADR
-
-    # Farmacéuticas/Salud
+    "adidas.com": "ADDYY",
+    "zalando.com": "ZLNDY",
     "pfizer.com": "PFE",
     "johnsonandjohnson.com": "JNJ",
     "moderna.com": "MRNA",
@@ -109,40 +89,30 @@ FALLBACK_TICKERS = {
     "merck.com": "MRK",
     "bayer.com": "BAYRY",
     "sanofi.com": "SNY",
-
-    # Aeroespacial/Defensa
     "boeing.com": "BA",
     "lockheedmartin.com": "LMT",
     "raytheon.com": "RTX",
     "airbus.com": "EADSY",
     "northropgrumman.com": "NOC",
-
-    # Telecomunicaciones
     "verizon.com": "VZ",
     "att.com": "T",
     "vodafone.com": "VOD",
     "telefonica.com": "TEF",
-
-    # Transporte/Logística
     "ups.com": "UPS",
     "fedex.com": "FDX",
     "dhl.com": "DPSTF",
     "maersk.com": "AMKBY",
-
-    # Bienes Raíces/Constructora
     "cbreglobal.com": "CBRE",
     "realogy.com": "HOUS",
     "lennar.com": "LEN",
     "drhorton.com": "DHI",
     "pultegroup.com": "PHM",
-
-    # Diversas/OTRAS
     "berkshirehathaway.com": "BRK-B",
     "didi.com": "DIDIY",
     "alibaba.com": "BABA",
     "jd.com": "JD",
     "baidu.com": "BIDU",
-    "united.com": "UAL",   # United Airlines
+    "united.com": "UAL",
     "southwest.com": "LUV",
     "marriott.com": "MAR",
     "booking.com": "BKNG",
@@ -208,7 +178,7 @@ def find_linkedin_url(soup):
 
 def extract_company_info(content, website_url, source="website"):
     if not content or len(content) < 50:
-        st.warning("Insufficient content extracted for GPT analysis.")
+        st.warning("Insufficient content extracted for analysis.")
         return None
 
     # Construir prompt según idioma
@@ -229,21 +199,32 @@ def extract_company_info(content, website_url, source="website"):
         {content[:4000]}
         """
 
+    # Preparar payload para la API de Gemini
+    payload = {
+        "model": "gemini-model-id",  # Reemplaza con el identificador correcto para Gemini
+        "messages": [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 600
+    }
+    
+    headers = {
+        "Authorization": f"Bearer {GEMINI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=600
-        )
-        return response["choices"][0]["message"]["content"].strip()
+        # Llamada al endpoint de Gemini (ajusta la URL según la documentación oficial)
+        response = requests.post("https://aistudio.google.com/api/v1/chat", headers=headers, json=payload)
+        response.raise_for_status()  # Lanza error si la respuesta no es 200 OK
+        response_json = response.json()
+        # Se asume una estructura de respuesta similar a la de OpenAI, ajusta según sea necesario.
+        return response_json["choices"][0]["message"]["content"].strip()
     except Exception as e:
-        st.error(f"Error during GPT-4 extraction: {e}")
+        st.error(f"Error during Gemini extraction: {e}")
         return None
-
 
 def safe_parse(raw):
     try:
@@ -267,7 +248,6 @@ def fetch_financials(ticker):
         }
     except Exception:
         return {}
-    
 
 def lookup_ticker_by_name(name: str) -> str | None:
     query = urllib.parse.quote(name)
@@ -279,29 +259,18 @@ def lookup_ticker_by_name(name: str) -> str | None:
     except Exception:
         return None
 
-
-def lookup_ticker_by_name(name: str) -> str | None:
-    query = urllib.parse.quote(name)
-    url = f"https://query1.finance.yahoo.com/v1/finance/search?q={query}"
-    try:
-        resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
-        quotes = resp.json().get("quotes", [])
-        return quotes[0].get("symbol") if quotes else None
-    except Exception:
-        return None
-
-
+# Función principal para procesar la información de la empresa
 def process_company(company_url):
     st.info(f"Processing company: {company_url}")
     website_text, website_soup = scrape_web_content(company_url)
     if not website_text:
         return {}
 
-    # Extraer info GPT
+    # Extraer info usando Gemini
     website_raw = extract_company_info(website_text, company_url, source="website")
     website_info = safe_parse(website_raw)
 
-    # LinkedIn
+    # Extraer información desde LinkedIn si se encuentra
     linkedin_url = find_linkedin_url(website_soup)
     linkedin_info = {}
     if linkedin_url:
@@ -312,15 +281,15 @@ def process_company(company_url):
 
     final_info = {**website_info, **linkedin_info, "linkedin_url": linkedin_url}
 
-    # 1) Tomar ticker desde GPT
+    # 1) Tomar ticker desde la información extraída
     ticker = final_info.get("ticker")
 
-    # 1.b) Si GPT devolvió algo como "Data not provided", limpiarlo a None
+    # 1.b) Si GPT devolvió "Data not provided" o similar, limpiarlo a None
     invalid_tickers = ["Data not provided", "Not provided", "N/A", "", None]
-    if ticker and ticker.lower() in ["data not provided", "not provided", "n/a", ""]:
+    if ticker and ticker.lower() in [t.lower() for t in invalid_tickers]:
         ticker = None
 
-    # 2) Si GPT no lo dio, buscar en Yahoo Finance con el nombre
+    # 2) Si no se obtuvo ticker, buscar en Yahoo Finance con el nombre
     if not ticker:
         name_for_lookup = final_info.get("name", "")
         ticker_from_yahoo = lookup_ticker_by_name(name_for_lookup)
@@ -328,8 +297,7 @@ def process_company(company_url):
             ticker = ticker_from_yahoo
             final_info["ticker"] = ticker
 
-    # 3) Si ni GPT ni lookup lo dieron, fallback manual por dominio
-# 3) Si ni GPT ni lookup lo dieron, fallback manual por dominio
+    # 3) Fallback manual por dominio si no se obtuvo ticker
     if not ticker:
         domain_parts = tldextract.extract(company_url)
         domain = f"{domain_parts.domain}.{domain_parts.suffix}"
@@ -338,16 +306,14 @@ def process_company(company_url):
             ticker = fallback
             final_info["ticker"] = ticker
 
-
-    # 4) Si al final tenemos ticker, trae datos financieros
+    # 4) Si se obtuvo ticker, traer datos financieros
     if ticker:
         st.write(f"Ticker final => {ticker}")
         final_info.update(fetch_financials(ticker))
 
-    # Guardar en DB
+    # Guardar la búsqueda en la base de datos
     save_search_to_db(company_url, linkedin_url, final_info)
     return final_info
-
 
 def save_search_to_db(company_url, linkedin_url, data):
     conn = sqlite3.connect("history.db")
@@ -381,7 +347,6 @@ def save_search_to_db(company_url, linkedin_url, data):
     finally:
         conn.close()
 
-
 # ---------------------- Streamlit UI ----------------------
 # URL de la foto de perfil de LinkedIn
 linkedin_image_url = "https://media.licdn.com/dms/image/v2/D4E03AQHFFEQls8Yz-w/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1702933383349?e=1746662400&v=beta&t=tYwSt2scB5uEJfWvlLdg19ycRkfvAFGRNj1X3JcNGOc"
@@ -413,8 +378,8 @@ st.sidebar.markdown(
     """, 
     unsafe_allow_html=True
 )
-lang = st.sidebar.selectbox("Idioma de salida", ["Original", "Español"])
 
+lang = st.sidebar.selectbox("Idioma de salida", ["Original", "Español"])
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to:", ["Company Search"])
 
@@ -426,12 +391,10 @@ Esta herramienta automatiza el **research de empresas** para adquisiciones, redu
 ➡️ **Cómo funciona:**  
 1. Ingresás URLs de sitios corporativos o perfiles de LinkedIn.  
 2. El sistema extrae datos clave (headcount, revenue, servicios, país) mediante web scraping.  
-3. GPT‑4 procesa esa información, genera un resumen estructurado y asigna un puntaje según tus criterios predefinidos.
+3. Gemini procesa esa información, genera un resumen estructurado y asigna un puntaje según tus criterios predefinidos.
 🎯 **Objetivo:**  
 Acelerar la obtención de insights confiables, mejorar la precisión de los datos y facilitar decisiones estratégicas.
 """, unsafe_allow_html=True)
-
-
 
 if page == "Company Search":
     st.title("Company Research Tool")
@@ -444,17 +407,12 @@ if page == "Company Search":
         else:
             st.session_state.df = pd.DataFrame([process_company(url) for url in valid_urls])
 
-    # Si ya hay resultados en session_state, los mostramos (incluso tras cambiar el selectbox)
     if "df" in st.session_state:
         df = st.session_state.df
-
-        # Normalizar estructuras complejas
         for col in df.columns:
             df[col] = df[col].apply(lambda v: json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else v)
-
         st.dataframe(df)
 
-        # Fundamentals Económicos
         for col in ["name", "market_cap", "current_price", "year_change_pct"]:
             if col not in df.columns:
                 df[col] = None
@@ -462,7 +420,6 @@ if page == "Company Search":
         st.subheader("Fundamentals Económicos")
         st.dataframe(df[["name","market_cap","current_price","year_change_pct"]])
 
-         # Gráfico con medias móviles (persistente)
         if "ticker" in df.columns and df["ticker"].notna().any():
             selected_ticker = st.selectbox(
                 "Selecciona ticker para gráfico",
@@ -505,4 +462,3 @@ if page == "Company Search":
             file_name="companies_info.csv",
             mime="text/csv"
         )
-
