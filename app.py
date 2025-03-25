@@ -187,7 +187,7 @@ def extract_company_info(content, website_url, source="website"):
     # Combinar los mensajes en un solo prompt
     full_prompt = f"{system_msg}\n\n{user_prompt}"
 
-    # Preparar payload para la API de AI21 Studio
+    # Preparar payload para AI21 Studio
     payload = {
         "prompt": full_prompt,
         "numResults": 1,          # Número de resultados deseados
@@ -206,10 +206,10 @@ def extract_company_info(content, website_url, source="website"):
     }
     
     try:
-        # Endpoint oficial para el modelo j1-large de AI21 Studio
+        # Llamada al endpoint de completions para el modelo j1-large
         response = requests.post("https://api.ai21.com/studio/v1/j1-large/complete", headers=req_headers, json=payload)
-        response.raise_for_status()  # Lanza error si la respuesta no es 200 OK
-        st.write("Raw AI21 response:", response.text)  # Línea de depuración
+        response.raise_for_status()  # Error si la respuesta no es 200 OK
+        st.write("Raw AI21 response:", response.text)  # Depuración: ver respuesta cruda
 
         if not response.text.strip():
             st.error("AI21 response is empty.")
@@ -221,7 +221,7 @@ def extract_company_info(content, website_url, source="website"):
             st.error("Failed to decode AI21 response as JSON.")
             return None
 
-        # La estructura de la respuesta de AI21 suele ser:
+        # Se espera que la respuesta tenga esta estructura:
         # {"completions": [{"data": {"text": "texto generado"}}, ...], ...}
         if "completions" in response_json and len(response_json["completions"]) > 0:
             return response_json["completions"][0]["data"]["text"].strip()
