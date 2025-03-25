@@ -12,6 +12,8 @@ import urllib.parse
 import tldextract
 import ai21
 
+st.write("Attributes of ai21:", dir(ai21))
+
 # Load environment variables
 load_dotenv()
 ai21.api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
