@@ -395,61 +395,67 @@ if page == "Company Search":
             st.error("Please enter at least one valid company URL.")
         else:
             st.session_state.df = pd.DataFrame([process_company(url) for url in valid_urls])
+if "df" in st.session_state:
+    df = st.session_state.df
 
-    if "df" in st.session_state:
-        df = st.session_state.df
-        st.subheader("Company Search Summary")
-        st.dataframe(pd.DataFrame([{"Company Summary": df.iloc[0].get("brief_description", "")}]))
-        for col in df.columns:
-            df[col] = df[col].apply(lambda v: json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else v)
-        st.dataframe(df)
+    st.subheader("Company Search — Extracted Company Data")
+    parsed = safe_parse(df.iloc[0].get("brief_description", ""))
 
-        for col in ["name", "market_cap", "current_price", "year_change_pct"]:
-            if col not in df.columns:
-                df[col] = None
+    if parsed:
+        summary_df = pd.DataFrame([parsed])
+        st.dataframe(summary_df)
+    else:
+        st.error("No se pudo parsear la respuesta de AI21 como JSON")
 
-        st.subheader("Fundamentals Económicos")
-        st.dataframe(df[["name","market_cap","current_price","year_change_pct"]])
+    # Mostrar el DataFrame completo normalizado
+    for col in df.columns:
+        df[col] = df[col].apply(lambda v: json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else v)
+    st.dataframe(df)
 
-        if "ticker" in df.columns and df["ticker"].notna().any():
-            selected_ticker = st.selectbox(
-                "Selecciona ticker para gráfico",
-                df["ticker"].dropna().unique()
-            )
+    # Fundamentals Económicos
+    for col in ["name", "market_cap", "current_price", "year_change_pct"]:
+        if col not in df.columns:
+            df[col] = None
 
-            try:
-                hist = yf.Ticker(selected_ticker).history(period="1y")
-                if hist.empty:
-                    raise ValueError("No hay datos históricos disponibles")
+    st.subheader("Fundamentals Económicos")
+    st.dataframe(df[["name","market_cap","current_price","year_change_pct"]])
 
-                hist["MA50"] = hist["Close"].rolling(50).mean()
-                hist["MA200"] = hist["Close"].rolling(200).mean()
-
-                st.subheader(f"Evolución Precio y Medias Móviles — {selected_ticker}")
-                import matplotlib.pyplot as plt
-                fig, ax = plt.subplots()
-                ax.plot(hist.index, hist["Close"], label="Precio cierre")
-                ax.plot(hist.index, hist["MA50"], label="MA50")
-                ax.plot(hist.index, hist["MA200"], label="MA200")
-                ax.set_xlabel("Fecha")
-                ax.set_ylabel("Precio (USD)")
-                ax.legend()
-                st.pyplot(fig)
-
-                csv_data = hist.to_csv()
-                st.download_button(
-                    "Descargar datos históricos (CSV)",
-                    csv_data,
-                    file_name=f"{selected_ticker}_history.csv",
-                    mime="text/csv"
-                )
-            except Exception as e:
-                st.error(f"No se pudieron obtener datos históricos para {selected_ticker}: {e}")
-
-        df.to_csv("companies_info.csv", index=False, sep=";")
-        st.download_button(
-            "Download CSV",
-            df.to_csv(index=False, sep=";"),
-            file_name="companies_info.csv",
-            mime="text/csv"
+    # Gráfico de medias móviles
+    if "ticker" in df.columns and df["ticker"].notna().any():
+        selected_ticker = st.selectbox(
+            "Selecciona ticker para gráfico",
+            df["ticker"].dropna().unique()
         )
+        try:
+            hist = yf.Ticker(selected_ticker).history(period="1y")
+            hist["MA50"] = hist["Close"].rolling(50).mean()
+            hist["MA200"] = hist["Close"].rolling(200).mean()
+
+            st.subheader(f"Evolución Precio y Medias Móviles — {selected_ticker}")
+            import matplotlib.pyplot as plt
+            fig, ax = plt.subplots()
+            ax.plot(hist.index, hist["Close"], label="Precio cierre")
+            ax.plot(hist.index, hist["MA50"], label="MA50")
+            ax.plot(hist.index, hist["MA200"], label="MA200")
+            ax.set_xlabel("Fecha")
+            ax.set_ylabel("Precio (USD)")
+            ax.legend()
+            st.pyplot(fig)
+
+            csv_data = hist.to_csv()
+            st.download_button(
+                "Descargar datos históricos (CSV)",
+                csv_data,
+                file_name=f"{selected_ticker}_history.csv",
+                mime="text/csv"
+            )
+        except Exception as e:
+            st.error(f"No se pudieron obtener datos históricos para {selected_ticker}: {e}")
+
+    df.to_csv("companies_info.csv", index=False, sep=";")
+    st.download_button(
+        "Download CSV",
+        df.to_csv(index=False, sep=";"),
+        file_name="companies_info.csv",
+        mime="text/csv"
+    )
