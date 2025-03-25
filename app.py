@@ -214,8 +214,10 @@ def extract_company_info(content, website_url, source="website"):
         # Llamada al endpoint de Gemini (ajusta la URL según la documentación oficial)
         response = requests.post("https://aistudio.google.com/api/v1/chat", headers=req_headers, json=payload)
         response.raise_for_status()  # Lanza error si la respuesta no es 200 OK
-        st.write("Raw Gemini response:", response.text)  # Línea de depuración
-
+        
+        # Línea de depuración para ver la respuesta cruda
+        st.write("Raw Gemini response:", response.text)
+        
         if not response.text.strip():
             st.error("Gemini response is empty.")
             return None
