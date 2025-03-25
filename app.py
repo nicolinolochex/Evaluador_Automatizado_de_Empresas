@@ -180,23 +180,23 @@ def extract_company_info(content, website_url, source="website"):
     if lang == "Español":
         system_msg = "Eres un asistente experto en valoración y adquisición de empresas. Genera resultados en Español."
         prompt = f"""
-        Extrae y resume la siguiente información de la empresa del contenido proporcionado ({source}).
-        Devuelve SOLO un JSON válido con las claves: name, website, ownership, country, brief_description, services, headcount, revenue, ticker.
-        Contenido:
-        {content[:4000]}
-        """
+Extrae y resume la siguiente información de la empresa del contenido proporcionado ({source}).
+Devuelve SOLO un JSON válido con las claves: name, website, ownership, country, brief_description, services, headcount, revenue, ticker.
+Contenido:
+{content[:4000]}
+"""
     else:
         system_msg = "You are an expert in company valuation and acquisitions. Return output in English."
         prompt = f"""
-        Extract and summarize the following company information from the provided {source} content.
-        Return ONLY a valid JSON with keys: name, website, ownership, country, brief_description, services, headcount, revenue, ticker.
-        Content:
-        {content[:4000]}
-        """
+Extract and summarize the following company information from the provided {source} content.
+Return ONLY a valid JSON with keys: name, website, ownership, country, brief_description, services, headcount, revenue, ticker.
+Content:
+{content[:4000]}
+"""
 
     # Preparar payload para la API de Gemini
     payload = {
-        "model": "gemini-model-id",  # Reemplaza con el identificador correcto para Gemini
+        "model": "gemini-model-id",  # <-- Cambiar por el modelo correcto de Gemini
         "messages": [
             {"role": "system", "content": system_msg},
             {"role": "user", "content": prompt}
@@ -211,12 +211,17 @@ def extract_company_info(content, website_url, source="website"):
     }
     
     try:
-        # Llamada al endpoint de Gemini (ajusta la URL según la documentación oficial)
+        # Cambiar el endpoint por el correcto según la documentación de Gemini
         response = requests.post("https://aistudio.google.com/api/v1/chat", headers=req_headers, json=payload)
-        response.raise_for_status()  # Lanza error si la respuesta no es 200 OK
+        response.raise_for_status()  # Lanza error si no es 200 OK
         
         # Línea de depuración para ver la respuesta cruda
         st.write("Raw Gemini response:", response.text)
+        
+        # Verificar que el tipo de contenido sea JSON
+        if "application/json" not in response.headers.get("Content-Type", ""):
+            st.error("Response content type is not JSON.")
+            return None
         
         if not response.text.strip():
             st.error("Gemini response is empty.")
@@ -228,6 +233,7 @@ def extract_company_info(content, website_url, source="website"):
             st.error("Failed to decode Gemini response as JSON.")
             return None
 
+        # Adaptar según la estructura real de la respuesta de Gemini:
         if "choices" in response_json and len(response_json["choices"]) > 0:
             return response_json["choices"][0]["message"]["content"].strip()
         else:
@@ -236,6 +242,7 @@ def extract_company_info(content, website_url, source="website"):
     except Exception as e:
         st.error(f"Error during Gemini extraction: {e}")
         return None
+
 
 def safe_parse(raw):
     try:
