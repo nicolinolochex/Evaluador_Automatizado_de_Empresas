@@ -207,7 +207,7 @@ def extract_company_info(content, website_url, source="website"):
     
     try:
         # Endpoint oficial para el modelo j1-large de AI21 Studio
-        response = requests.post("https://api.ai21.com/studio/v1/j1-large/complete", headers=req_headers, json=payload)
+        response = requests.post("https://api.ai21.com/studio/v1/j1-jumbo/complete", headers=req_headers, json=payload)
         response.raise_for_status()  # Lanza error si la respuesta no es 200 OK
         st.write("Raw AI21 response:", response.text)  # Línea de depuración
 
