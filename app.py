@@ -195,10 +195,10 @@ def extract_company_info(content, website_url, source="website"):
 
     try:
         response = client.chat.completions.create(
-            model="j1-large",
+            model="jamba-large-1.6",      # ← Modelo válido según AI21 Studio
             messages=[
-                ChatMessage(role="system", content=system_msg),
-                ChatMessage(role="user", content=user_prompt)
+            ChatMessage(role="system", content=system_msg),
+        C   hatMessage(role="user", content=user_prompt)
             ],
             temperature=0.7,
             max_tokens=600,
