@@ -204,7 +204,7 @@ def extract_company_info(content, website_url, source="website"):
 
     try:
         response = client.chat.completions.create(
-            model="j1-large", 
+            model="j1-large",
             messages=[
                 ChatMessage(role="system", content=system_msg),
                 ChatMessage(role="user", content=user_prompt)
@@ -214,9 +214,8 @@ def extract_company_info(content, website_url, source="website"):
             stop_sequences=["\n"]
         )
         st.write("Raw AI21 SDK response:", response)
-        comps = response.completions
-        if comps and comps[0].data.text:
-            return comps[0].data.text.strip()
+        if response.completions and response.completions[0].data.text:
+            return response.completions[0].data.text.strip()
         st.error("Unexpected AI21 response structure.")
         return None
 
