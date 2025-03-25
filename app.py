@@ -19,11 +19,6 @@ GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
 COST_PER_1K_TOKENS = 0.03
 
 FALLBACK_TICKERS = {
-    # Formato:
-    # "dominio_principal_de_la_empresa": "TICKER_BURSÁTIL"
-    # -----------------------------------------------------
-    # ------------------- Ejemplos de Empresas ------------ 
-    # -----------------------------------------------------
     "apple.com": "AAPL",
     "microsoft.com": "MSFT",
     "google.com": "GOOGL",
@@ -210,18 +205,32 @@ def extract_company_info(content, website_url, source="website"):
         "max_tokens": 600
     }
     
-    headers = {
+    req_headers = {
         "Authorization": f"Bearer {GEMINI_API_KEY}",
         "Content-Type": "application/json"
     }
     
     try:
         # Llamada al endpoint de Gemini (ajusta la URL según la documentación oficial)
-        response = requests.post("https://aistudio.google.com/api/v1/chat", headers=headers, json=payload)
+        response = requests.post("https://aistudio.google.com/api/v1/chat", headers=req_headers, json=payload)
         response.raise_for_status()  # Lanza error si la respuesta no es 200 OK
         st.write("Raw Gemini response:", response.text)  # Línea de depuración
-        response_json = response.json()
-        return response_json["choices"][0]["message"]["content"].strip()
+
+        if not response.text.strip():
+            st.error("Gemini response is empty.")
+            return None
+
+        try:
+            response_json = response.json()
+        except json.JSONDecodeError:
+            st.error("Failed to decode Gemini response as JSON.")
+            return None
+
+        if "choices" in response_json and len(response_json["choices"]) > 0:
+            return response_json["choices"][0]["message"]["content"].strip()
+        else:
+            st.error("Unexpected Gemini response structure.")
+            return None
     except Exception as e:
         st.error(f"Error during Gemini extraction: {e}")
         return None
@@ -284,7 +293,7 @@ def process_company(company_url):
     # 1) Tomar ticker desde la información extraída
     ticker = final_info.get("ticker")
 
-    # 1.b) Si GPT devolvió "Data not provided" o similar, limpiarlo a None
+    # 1.b) Si se devolvió "Data not provided" o similar, limpiarlo a None
     invalid_tickers = ["Data not provided", "Not provided", "N/A", "", None]
     if ticker and ticker.lower() in [t.lower() for t in invalid_tickers]:
         ticker = None
