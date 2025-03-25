@@ -203,8 +203,8 @@ def extract_company_info(content, website_url, source="website"):
             stop_sequences=["\n"]
         )
         st.write("Raw AI21 SDK response:", response)
-        if response.completions and response.completions[0].data.text:
-            return response.completions[0].data.text.strip()
+        if hasattr(response, "choices") and response.choices:
+            return response.choices[0].message.content.strip()
 
         st.error("Unexpected AI21 response structure.")
         return None
