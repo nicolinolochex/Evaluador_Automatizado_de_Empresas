@@ -191,14 +191,12 @@ def extract_company_info(content, website_url, source="website"):
         system_msg = "You are an expert in company valuation and acquisitions. Return output in English."
         user_prompt = f"Extract and summarize the following company information: {content[:4000]}"
 
-    full_prompt = f"{system_msg}\n\n{user_prompt}"
-
     try:
         response = client.chat.completions.create(
-            model="jamba-large-1.6",      # ← Modelo válido según AI21 Studio
+            model="jamba-large-1.6", 
             messages=[
-            ChatMessage(role="system", content=system_msg),
-        C   hatMessage(role="user", content=user_prompt)
+                ChatMessage(role="system", content=system_msg),
+                ChatMessage(role="user", content=user_prompt)
             ],
             temperature=0.7,
             max_tokens=600,
@@ -207,6 +205,7 @@ def extract_company_info(content, website_url, source="website"):
         st.write("Raw AI21 SDK response:", response)
         if response.completions and response.completions[0].data.text:
             return response.completions[0].data.text.strip()
+
         st.error("Unexpected AI21 response structure.")
         return None
 
